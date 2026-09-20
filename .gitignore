@@ -48,5 +48,4 @@ app.*.map.json
 
 *.aab
 
-# локальные бэкапы
 .backups/
