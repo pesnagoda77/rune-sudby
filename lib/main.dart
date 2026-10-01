@@ -1,9 +1,18 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Catch ALL errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    developer.log('FLUTTER ERROR: ${details.exception}', name: 'RuneApp');
+    developer.log('STACK: ${details.stack}', name: 'RuneApp');
+    FlutterError.presentError(details);
+  };
+  
   runApp(const MyApp());
 }
 

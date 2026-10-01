@@ -37,7 +37,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9F0F5),
         elevation: 0,
-        title: const Text('Коллекция',
+        title: const Text('Коллекция рун',
             style: TextStyle(color: Color(0xFF3D2C3A), fontWeight: FontWeight.w600)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF8E7F8A)),
@@ -46,20 +46,34 @@ class _CollectionScreenState extends State<CollectionScreen> {
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFE8A0BF)))
           : SafeArea(
               bottom: false,
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: allRunes.length,
-                itemBuilder: (context, index) {
-                  final rune = allRunes[index];
-                  final isCollected = _collected.any((r) => r.id == rune.id);
-                  return _buildRuneCard(rune, isCollected);
-                },
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 2, 20, 12),
+                    child: Text(
+                      'Тяните руну дня — открытые руны остаются здесь навсегда. Часть рун ещё впереди.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Color(0xFF8E7F8A), height: 1.4),
+                    ),
+                  ),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: allRunes.length,
+                      itemBuilder: (context, index) {
+                        final rune = allRunes[index];
+                        final isCollected = _collected.any((r) => r.id == rune.id);
+                        return _buildRuneCard(rune, isCollected);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
     );
@@ -78,48 +92,69 @@ class _CollectionScreenState extends State<CollectionScreen> {
             if (isCollected)
               Image.asset(rune.imagePath, fit: BoxFit.cover)
             else
-              Container(color: const Color(0xFFEDE0E8)),
-            if (!isCollected)
-              Container(color: const Color(0xFFEDE0E8).withOpacity(0.7)),
-            // Rune symbol
-            Center(
-              child: Text(
-                rune.symbol,
-                style: TextStyle(
-                  fontSize: 48,
-                  color: isCollected ? const Color(0xFFE8A0BF) : const Color(0xFFC0B0C0),
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-            ),
-            // Name at bottom
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.6),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
+              Image.asset('assets/images/card_back.png', fit: BoxFit.cover),
+            if (!isCollected) Container(color: Colors.black.withOpacity(0.12)),
+            if (isCollected)
+              Center(
                 child: Text(
-                  rune.name,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isCollected ? Colors.white : const Color(0xFF3D2C3A),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                  rune.symbol,
+                  style: const TextStyle(
+                    fontSize: 48,
+                    color: Color(0xFFE8A0BF),
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
               ),
-            ),
+            if (isCollected)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                    ),
+                  ),
+                  child: Text(
+                    rune.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            if (!isCollected)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withOpacity(0.55), Colors.transparent],
+                    ),
+                  ),
+                  child: const Text(
+                    'Ещё не открыта',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
