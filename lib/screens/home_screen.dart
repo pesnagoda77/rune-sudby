@@ -67,6 +67,9 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadLastDraw() async {
     await _service.init();
     final premium = await _service.isPremium;
+    if (premium) {
+      await _service.continuePremiumToday();
+    }
     if (mounted) {
       setState(() => _isPremium = premium);
     }
@@ -97,6 +100,9 @@ class _HomeScreenState extends State<HomeScreen>
     await Future.delayed(const Duration(milliseconds: 900));
 
     final premium = await _service.isPremium;
+    if (mounted && premium != _isPremium) {
+      setState(() => _isPremium = premium);
+    }
     final step = _service.drawStep;
 
     if (premium) {
@@ -204,7 +210,13 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       MaterialPageRoute(builder: (_) => const PremiumScreen()),
     );
-    setState(() {});
+    // После возврата перечитываем статус: если покупка прошла — включаем
+    // премиум и продолжаем три руны в тот же день.
+    final premium = await _service.isPremium;
+    if (premium) {
+      await _service.continuePremiumToday();
+    }
+    if (mounted) setState(() => _isPremium = premium);
   }
 
   Color _elementColor(String element) {

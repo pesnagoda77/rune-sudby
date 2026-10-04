@@ -91,7 +91,10 @@ class BillingService {
             await prefs.remove(_premiumExpiryKey);
           } else if (purchase.productID == _premium30DaysSubId) {
             _sawActiveSubscription = true;
-            await prefs.setString(_premiumTypeKey, '30days');
+            // Не затираем 'forever': если «навсегда» куплено, оно сильнее.
+            if (prefs.getString(_premiumTypeKey) != 'forever') {
+              await prefs.setString(_premiumTypeKey, '30days');
+            }
             await prefs.remove(_premiumExpiryKey); // срок ведёт Google
           }
           if (purchase.pendingCompletePurchase) {

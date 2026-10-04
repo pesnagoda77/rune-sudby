@@ -213,6 +213,25 @@ class RuneService {
     return !canDrawToday;
   }
 
+  /// Если премиум активировался ПОСЛЕ бесплатной руны этого дня — разрешить
+  /// продолжить триадой (Прошлое + Будущее) в тот же день.
+  Future<void> continuePremiumToday() async {
+    if (_prefs == null) await init();
+    if (drawStep != 'done') return;
+    final lastDrawStr = _prefs!.getString(_lastDrawDateKey);
+    if (lastDrawStr == null) return;
+    final lastDraw = DateTime.parse(lastDrawStr);
+    final now = DateTime.now();
+    final sameDay = lastDraw.year == now.year &&
+        lastDraw.month == now.month &&
+        lastDraw.day == now.day;
+    if (!sameDay) return;
+    final hasPast = _prefs!.getString(_lastPastRuneIdKey) != null;
+    final hasFuture = _prefs!.getString(_lastFutureRuneIdKey) != null;
+    if (hasPast || hasFuture) return; // триада уже начата/завершена
+    await _prefs!.setString(_drawStepKey, 'present');
+  }
+
   /// DEBUG: Принудительно включить/выключить премиум (для теста)
   Future<void> debugSetPremium(bool value) async {
     if (_prefs == null) await init();
