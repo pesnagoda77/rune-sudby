@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Модель:
 /// - premium_forever — разовая покупка (non-consumable), без изменений;
-/// - premium_30days_sub — ПОДПИСКА с автопродлением (Google ведёт статус
+/// - premium_monthly — ПОДПИСКА с автопродлением (Google ведёт статус
 ///   и продление; приложение не фабрикует локальные сроки).
 ///
 /// Старый one-time продукт premium_30days (1.1.8) отключается в Play Console
@@ -22,7 +22,7 @@ class BillingService {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   static const String _premiumForeverId = 'premium_forever';
-  static const String _premium30DaysSubId = 'premium_30days_sub';
+  static const String _premium30DaysSubId = 'premium_monthly';
   static const String _premiumTypeKey = 'premium_type'; // 'forever' | '30days'
   static const String _premiumExpiryKey = 'premium_expiry_date'; // legacy 1.1.8
 
