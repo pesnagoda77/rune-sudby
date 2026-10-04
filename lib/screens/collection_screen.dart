@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../data/runes.dart';
 import '../models/rune.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/rune_texts.dart';
 import '../services/rune_service.dart';
 
 class CollectionScreen extends StatefulWidget {
@@ -37,7 +39,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9F0F5),
         elevation: 0,
-        title: const Text('Коллекция рун',
+        title: Text(AppLocalizations.of(context).t('collectionTitle'),
             style: TextStyle(color: Color(0xFF3D2C3A), fontWeight: FontWeight.w600)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF8E7F8A)),
@@ -51,7 +53,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   const Padding(
                     padding: EdgeInsets.fromLTRB(20, 2, 20, 12),
                     child: Text(
-                      'Тяните руну дня — открытые руны остаются здесь навсегда. Часть рун ещё впереди.',
+                      AppLocalizations.of(context).t('collectionHint'),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: Color(0xFF8E7F8A), height: 1.4),
                     ),
@@ -120,7 +122,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     ),
                   ),
                   child: Text(
-                    rune.name,
+                    runeL10n(rune, languageOf(context)).name,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -145,7 +147,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Ещё не открыта',
+                    AppLocalizations.of(context).t('notOpened'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
