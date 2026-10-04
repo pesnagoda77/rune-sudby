@@ -99,14 +99,14 @@ class BillingService {
           }
           break;
         case PurchaseStatus.canceled:
-          _messages.add('Покупка отменена');
+          _messages.add('msgPurchaseCanceled');
           break;
         case PurchaseStatus.error:
           final code = purchase.error?.code ?? '';
           if (code.toLowerCase().contains('cancel')) {
-            _messages.add('Покупка отменена');
+            _messages.add('msgPurchaseCanceled');
           } else {
-            _messages.add('Ошибка покупки. Попробуй позже.');
+            _messages.add('msgPurchaseError');
           }
           break;
         case PurchaseStatus.pending:
@@ -158,7 +158,7 @@ class BillingService {
   /// Возвращает итог: есть ли активный премиум после синка со стором.
   Future<bool> restore() async {
     if (!_available) {
-      _messages.add('Магазин недоступен. Проверь подключение к интернету.');
+      _messages.add('msgStoreUnavailable');
       return false;
     }
     _sawActiveSubscription = false;
