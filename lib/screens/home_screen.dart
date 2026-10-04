@@ -167,16 +167,16 @@ class _HomeScreenState extends State<HomeScreen>
         title: Row(children: [
           Icon(Icons.diamond, color: _accent, size: 24),
           const SizedBox(width: 10),
-          Text('Руна уже выпала',
+          Text(l10n.t('limitDialogTitle'),
               style: TextStyle(fontSize: 18, color: _text)),
         ]),
         content: Text(
-            'Сегодня ты уже получила свою руну.\n\nОткрой три руны: Прошлое, Настоящее и Будущее.',
+            l10n.t('limitDialogBody'),
             style: TextStyle(color: _textMid, height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Позже', style: TextStyle(color: _textMid)),
+            child: Text(l10n.t('later'), style: const TextStyle(color: _textMid)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -189,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Открыть три руны',
+            child: Text(l10n.t('openThreeRunes'),
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: _isDark ? _darkBg : Colors.white)),
@@ -207,35 +207,36 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {});
   }
 
-  Color _elementColor(String element) {
-    switch (element) {
-      case 'огонь':
+  Color _elementColor(String elementKey) {
+    switch (elementKey) {
+      case 'fire':
         return const Color(0xFFE57373);
-      case 'вода':
+      case 'water':
         return const Color(0xFF64B5F6);
-      case 'воздух':
+      case 'air':
         return const Color(0xFF81D4FA);
-      case 'земля':
+      case 'earth':
         return const Color(0xFF81C784);
       default:
         return const Color(0xFFCE93D8);
     }
   }
 
-  String _getAdviceForRune(Rune rune, String type) {
+  String _getAdviceForRune(RuneL10n content, String type) {
     switch (type) {
       case 'past':
-        return '${rune.predictionPast}\n\n${rune.advice}';
+        return '${content.past}\n\n${content.advice}';
       case 'future':
-        return '${rune.predictionFuture}\n\n${rune.advice}';
+        return '${content.future}\n\n${content.advice}';
       case 'present':
       default:
-        return rune.advice;
+        return content.advice;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hasAnyRune = _presentRune != null || _pastRune != null || _futureRune != null;
 
     return Scaffold(
@@ -269,12 +270,12 @@ class _HomeScreenState extends State<HomeScreen>
                 if (mounted) {
                   setState(() => _isPremium = premium);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Премиум активирован (debug)')));
+                    SnackBar(content: Text(l10n.t('debugPremiumOn'))));
                 }
               }
             },
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('МОЯ РУНА',
+              Text(l10n.t('myRune'),
                   style: TextStyle(
                       color: _textMid.withOpacity(0.6),
                       fontSize: 11,
@@ -300,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen>
             TextButton.icon(
               onPressed: _openPremium,
               icon: Icon(Icons.workspace_premium, size: 18, color: _accent),
-              label: Text('Премиум',
+              label: Text(l10n.t('premium'),
                   style: TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600, color: _accent)),
               style: TextButton.styleFrom(
@@ -331,14 +332,14 @@ class _HomeScreenState extends State<HomeScreen>
           child: Icon(Icons.auto_fix_high, size: 40, color: _accent),
         ),
         const SizedBox(height: 16),
-        Text('Руна дня',
+        Text(l10n.t('emptyTitle'),
             style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: _text,
                 letterSpacing: 2)),
         const SizedBox(height: 4),
-        Text('Получи своё предсказание на сегодня',
+        Text(l10n.t('emptySubtitle'),
             style: TextStyle(fontSize: 14, color: _textMid)),
       ],
     ));
@@ -347,13 +348,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildRunesPager() {
     final runes = <_RuneDisplay>[];
     if (_presentRune != null) {
-      runes.add(_RuneDisplay(_presentRune!, 'НАСТОЯЩЕЕ', 'present'));
+      runes.add(_RuneDisplay(_presentRune!, l10n.t('labelPresent'), 'present'));
     }
     if (_pastRune != null) {
-      runes.add(_RuneDisplay(_pastRune!, 'ПРОШЛОЕ', 'past'));
+      runes.add(_RuneDisplay(_pastRune!, l10n.t('labelPast'), 'past'));
     }
     if (_futureRune != null) {
-      runes.add(_RuneDisplay(_futureRune!, 'БУДУЩЕЕ', 'future'));
+      runes.add(_RuneDisplay(_futureRune!, l10n.t('labelFuture'), 'future'));
     }
 
     return PageView.builder(
@@ -368,9 +369,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFullRunePage(Rune rune, String label, String type) {
-    final elemColor = _elementColor(rune.element);
+    final elemColor = _elementColor(kRuneElementKey[rune.id] ?? 'fire');
     final isUltraRare = rune.id == 'dagaz';
-    final adviceText = _getAdviceForRune(rune, type);
+    final content = runeL10n(rune, languageOf(context));
+    final adviceText = _getAdviceForRune(content, type);
 
     return FadeTransition(
       opacity: _fadeIn,
@@ -422,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 color: _accent.withOpacity(0.8),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text('✦ РЕДКАЯ',
+                              child: Text('\u2726 ' + AppLocalizations.of(context).t('rare'),
                                   style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
@@ -466,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen>
                   color: elemColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(rune.element.toUpperCase(),
+                child: Text(runeElementLabel(rune.id, languageOf(context)),
                     style: TextStyle(
                         color: elemColor,
                         fontSize: 9,
@@ -474,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen>
                         letterSpacing: 1.5)),
               ),
               const SizedBox(width: 8),
-              Text(rune.name,
+              Text(content.name,
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -482,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen>
                       letterSpacing: 1)),
             ]),
             const SizedBox(height: 1),
-            Text(rune.title,
+            Text(content.title,
                 style: TextStyle(
                     fontSize: 12,
                     color: _textMid.withOpacity(0.7),
@@ -534,25 +536,25 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  String _getButtonText() {
+  String _getButtonText(AppLocalizations l10n) {
     final step = _service.drawStep;
     if (!_isPremium) {
       // Бесплатный режим — всегда 1 руна
-      if (step == 'done') return 'УЗНАЙ СУДЬБУ ЗАВТРА';
-      return 'ПОЛУЧИТЬ РУНУ';
+      if (step == 'done') return l10n.t('btnTomorrow');
+      return l10n.t('btnDrawOne');
     }
     // Премиум — пошагово
     switch (step) {
       case 'present':
-        return 'ПОЛУЧИТЬ РУНУ ПРОШЛОГО';
+        return l10n.t('btnDrawPast');
       case 'past':
-        return 'ПОЛУЧИТЬ РУНУ БУДУЩЕГО';
+        return l10n.t('btnDrawFuture');
       case 'future':
       case 'done':
-        return 'УЗНАЙ СУДЬБУ ЗАВТРА';
+        return l10n.t('btnTomorrow');
       case 'none':
       default:
-        return 'ПОЛУЧИТЬ ТРИ РУНЫ';
+        return l10n.t('btnDrawThree');
     }
   }
 
@@ -563,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDrawButton() {
     final disabled = _isButtonDisabled();
-    final text = _getButtonText();
+    final text = _getButtonText(AppLocalizations.of(context));
 
     return SizedBox(
       width: double.infinity,
