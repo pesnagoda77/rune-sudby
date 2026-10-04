@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/billing_service.dart';
+import '../l10n/app_localizations.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -45,8 +46,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
     super.dispose();
   }
 
-  void _onMessage(String text) {
+  void _onMessage(String messageKey) {
     if (!mounted) return;
+    final text = AppLocalizations.of(context).t(messageKey);
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(text)));
   }
@@ -60,7 +62,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       if (!mounted) return;
       Navigator.pop(context, ok);
     } catch (_) {
-      _onMessage('Ошибка покупки. Попробуй позже.');
+      _onMessage('msgPurchaseError');
     } finally {
       if (mounted) setState(() => _buying = false);
     }
@@ -72,7 +74,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final premium = await _billing.restore();
     if (!mounted) return;
     setState(() => _restoring = false);
-    _onMessage(premium ? 'Покупки восстановлены' : 'Активных покупок не найдено');
+    _onMessage(premium ? 'msgRestored' : 'msgNothingToRestore');
   }
 
   Future<void> _manageSubscription() async {
@@ -82,11 +84,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
         mode: LaunchMode.externalApplication,
       );
       if (!ok && mounted) {
-        _onMessage('Не удалось открыть Google Play');
+        _onMessage('couldNotOpenPlay');
       }
     } catch (_) {
-      _onMessage(
-          'Google Play → Профиль → Платежи и подписки → Подписки');
+      _onMessage('manageManualHint');
     }
   }
 
@@ -98,6 +99,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
@@ -119,25 +121,24 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     Icon(Icons.auto_fix_high,
                         size: 48, color: _accent.withOpacity(0.8)),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Раскрой три руны',
+                    Text(
+                      AppLocalizations.of(context).t('premiumTitle'),
                       style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: _text),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Прошлое · Настоящее · Будущее',
+                    Text(
+                      AppLocalizations.of(context).t('premiumSubtitle'),
                       style: TextStyle(fontSize: 14, color: _textMid),
                     ),
                     const SizedBox(height: 32),
                     _buildCard(
                       icon: Icons.diamond,
                       title: _priceText(_billing.days30Product),
-                      subtitle: '30 дней · подписка',
-                      desc:
-                          'Три руны каждый день в течение месяца. Подписка продлевается автоматически каждые 30 дней, отмена — в любой момент.',
+                      subtitle: l10n.t('subPeriod'),
+                      desc: l10n.t('subDesc'),
                       product: _billing.days30Product,
                       highlight: false,
                     ),
@@ -145,15 +146,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     _buildCard(
                       icon: Icons.stars,
                       title: _priceText(_billing.foreverProduct),
-                      subtitle: 'Навсегда',
-                      desc:
-                          'Три руны каждый день — без ограничений и автопродлений. Разовая покупка.',
+                      subtitle: l10n.t('forever'),
+                      desc: l10n.t('foreverDesc'),
                       product: _billing.foreverProduct,
                       highlight: true,
                     ),
                     const Spacer(),
-                    const Text(
-                      'Оплату обрабатывает Google Play. Подписка продлевается автоматически; отменить её можно в настройках подписки Google Play.',
+                    Text(
+                      AppLocalizations.of(context).t('legal'),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 11, color: _textMid),
                     ),
@@ -162,8 +162,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       onPressed: _manageSubscription,
                       icon: const Icon(Icons.settings_outlined,
                           size: 16, color: _accent),
-                      label: const Text('Управление подпиской',
-                          style: TextStyle(fontSize: 12, color: _accent)),
+                      label: Text(l10n.t('manageSubscription'),
+                          style: const TextStyle(fontSize: 12, color: _accent)),
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
@@ -180,7 +180,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                             : const Icon(Icons.refresh,
                                 size: 16, color: _accent),
                         label: Text(
-                          _restoring ? 'Восстановление…' : 'Восстановить покупки',
+                          _restoring ? l10n.t('restoring') : l10n.t('restore'),
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -248,7 +248,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     color: _accent.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('ЛУЧШЕЕ',
+                  child: Text(
+                      AppLocalizations.of(context).t('best'),
                       style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -283,7 +284,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: _bg))
                   : Text(
-                      'Купить $title',
+                      '${l10n.t('buy')} $title',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
