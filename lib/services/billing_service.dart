@@ -1,7 +1,18 @@
 import 'dart:async';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Биллинг Руны Судьбы 1.1.9.
+///
+/// Модель:
+/// - premium_forever — разовая покупка (non-consumable), без изменений;
+/// - premium_30days_sub — ПОДПИСКА с автопродлением (Google ведёт статус
+///   и продление; приложение не фабрикует локальные сроки).
+///
+/// Старый one-time продукт premium_30days (1.1.8) отключается в Play Console
+/// при релизе 1.1.9 — entitlement его покупателей снимается синхронизацией
+/// со стором (restore при старте присылает только активные покупки).
 class BillingService {
   static final BillingService _instance = BillingService._internal();
   factory BillingService() => _instance;
@@ -11,16 +22,21 @@ class BillingService {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   static const String _premiumForeverId = 'premium_forever';
-  static const String _premium30DaysId = 'premium_30days';
-  static const String _premiumExpiryKey = 'premium_expiry_date';
+  static const String _premium30DaysSubId = 'premium_30days_sub';
   static const String _premiumTypeKey = 'premium_type'; // 'forever' | '30days'
+  static const String _premiumExpiryKey = 'premium_expiry_date'; // legacy 1.1.8
 
   List<ProductDetails> _products = [];
   bool _available = false;
   bool _initialized = false;
+  bool _sawActiveSubscription = false;
 
   bool get isAvailable => _available;
   List<ProductDetails> get products => _products;
+
+  /// Сообщения для UI: отмена, ошибка, недоступность магазина.
+  final StreamController<String> _messages = StreamController<String>.broadcast();
+  Stream<String> get messages => _messages.stream;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -34,44 +50,36 @@ class BillingService {
     );
 
     await _loadProducts();
-    await _checkPendingPurchases();
+
+    // Синхронизация entitlement с Play при старте: restore присылает только
+    // активные покупки/подписки. Если подписка не пришла — снимаем «30days».
+    _sawActiveSubscription = false;
+    await _iap.restorePurchases();
+    _scheduleEntitlementSync();
+
     _initialized = true;
   }
 
   Future<void> _loadProducts() async {
-    const ids = <String>{_premiumForeverId, _premium30DaysId};
+    const ids = <String>{_premiumForeverId, _premium30DaysSubId};
     final response = await _iap.queryProductDetails(ids);
     _products = response.productDetails;
   }
 
-  Future<void> _checkPendingPurchases() async {
-    if (!_available) return;
+  void _scheduleEntitlementSync() {
+    Timer(const Duration(seconds: 3), _syncSubscriptionEntitlement);
+  }
+
+  Future<void> _syncSubscriptionEntitlement() async {
+    if (!_available || _sawActiveSubscription) return;
     final prefs = await SharedPreferences.getInstance();
-    await _iap.restorePurchases();
+    if (prefs.getString(_premiumTypeKey) == '30days') {
+      await prefs.remove(_premiumTypeKey);
+      await prefs.remove(_premiumExpiryKey);
+    }
   }
 
-  Future<bool> isPremium() async {
-    final prefs = await SharedPreferences.getInstance();
-    final type = prefs.getString(_premiumTypeKey);
-    if (type == null) return false;
-
-    if (type == 'forever') return true;
-
-    final expiryStr = prefs.getString(_premiumExpiryKey);
-    if (expiryStr == null) return false;
-
-    final expiry = DateTime.tryParse(expiryStr);
-    if (expiry == null) return false;
-
-    return DateTime.now().isBefore(expiry);
-  }
-
-  Future<void> buyProduct(ProductDetails product) async {
-    final purchaseParam = PurchaseParam(productDetails: product);
-    await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-  }
-
-  void _onPurchaseUpdate(List<PurchaseDetails> purchases) async {
+  Future<void> _onPurchaseUpdate(List<PurchaseDetails> purchases) async {
     final prefs = await SharedPreferences.getInstance();
 
     for (final purchase in purchases) {
@@ -81,30 +89,110 @@ class BillingService {
           if (purchase.productID == _premiumForeverId) {
             await prefs.setString(_premiumTypeKey, 'forever');
             await prefs.remove(_premiumExpiryKey);
-          } else if (purchase.productID == _premium30DaysId) {
-            final expiry = DateTime.now().add(const Duration(days: 30));
+          } else if (purchase.productID == _premium30DaysSubId) {
+            _sawActiveSubscription = true;
             await prefs.setString(_premiumTypeKey, '30days');
-            await prefs.setString(_premiumExpiryKey, expiry.toIso8601String());
+            await prefs.remove(_premiumExpiryKey); // срок ведёт Google
           }
           if (purchase.pendingCompletePurchase) {
             await _iap.completePurchase(purchase);
           }
           break;
+        case PurchaseStatus.canceled:
+          _messages.add('Покупка отменена');
+          break;
         case PurchaseStatus.error:
+          final code = purchase.error?.code ?? '';
+          if (code.toLowerCase().contains('cancel')) {
+            _messages.add('Покупка отменена');
+          } else {
+            _messages.add('Ошибка покупки. Попробуй позже.');
+          }
           break;
         case PurchaseStatus.pending:
           break;
-        default:
-          break;
       }
     }
+  }
+
+  Future<bool> isPremium() async {
+    final prefs = await SharedPreferences.getInstance();
+    final type = prefs.getString(_premiumTypeKey);
+    if (type == null) return false;
+    if (type == 'forever') return true;
+
+    // '30days' (1.1.9): Google ведёт продление. Legacy-записи 1.1.8 с
+    // истёкшим expiry считаем неактивными, пока Play restore не подтвердит
+    // подписку (тогда expiry-ключ удаляется и статус держится через Google).
+    final expiryStr = prefs.getString(_premiumExpiryKey);
+    if (expiryStr == null) return true;
+    final expiry = DateTime.tryParse(expiryStr);
+    if (expiry == null) return true;
+    return DateTime.now().isBefore(expiry);
+  }
+
+  /// Ждёт подтверждения покупки (пока Play пришлёт событие в стрим).
+  Future<bool> waitForPremium({
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (await isPremium()) return true;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    return false;
+  }
+
+  /// Цена для отображения: для подписки — первая цена первого оффера Play,
+  /// для разовой покупки — product.price.
+  String displayPrice(ProductDetails product) {
+    final details = product;
+    if (details is GooglePlayProductDetails) {
+      final offers = details.subscriptionOfferDetails;
+      if (offers != null && offers.isNotEmpty) {
+        final phases = offers.first.pricingPhases;
+        if (phases.isNotEmpty) return phases.first.formattedPrice;
+      }
+    }
+    return product.price;
+  }
+
+  String? _offerTokenFor(ProductDetails product) {
+    final details = product;
+    if (details is GooglePlayProductDetails) {
+      final offers = details.subscriptionOfferDetails;
+      if (offers != null && offers.isNotEmpty) return offers.first.offerToken;
+    }
+    return null;
+  }
+
+  Future<void> buyProduct(ProductDetails product) async {
+    final param = PurchaseParam(
+      productDetails: product,
+      offerToken: _offerTokenFor(product),
+    );
+    await _iap.buyNonConsumable(purchaseParam: param);
+  }
+
+  /// Ручное восстановление покупок (кнопка на экране премиума).
+  /// Возвращает итог: есть ли активный премиум после синка со стором.
+  Future<bool> restore() async {
+    if (!_available) {
+      _messages.add('Магазин недоступен. Проверь подключение к интернету.');
+      return false;
+    }
+    _sawActiveSubscription = false;
+    await _iap.restorePurchases();
+    await Future.delayed(const Duration(seconds: 3));
+    await _syncSubscriptionEntitlement();
+    return isPremium();
   }
 
   ProductDetails? get foreverProduct =>
       _products.where((p) => p.id == _premiumForeverId).firstOrNull;
 
   ProductDetails? get days30Product =>
-      _products.where((p) => p.id == _premium30DaysId).firstOrNull;
+      _products.where((p) => p.id == _premium30DaysSubId).firstOrNull;
 
   void dispose() {
     _subscription?.cancel();
