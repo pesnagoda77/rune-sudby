@@ -143,34 +143,14 @@ class BillingService {
     return false;
   }
 
-  /// Цена для отображения: для подписки — первая цена первого оффера Play,
-  /// для разовой покупки — product.price.
-  String displayPrice(ProductDetails product) {
-    final details = product;
-    if (details is GooglePlayProductDetails) {
-      final offers = details.subscriptionOfferDetails;
-      if (offers != null && offers.isNotEmpty) {
-        final phases = offers.first.pricingPhases;
-        if (phases.isNotEmpty) return phases.first.formattedPrice;
-      }
-    }
-    return product.price;
-  }
-
-  String? _offerTokenFor(ProductDetails product) {
-    final details = product;
-    if (details is GooglePlayProductDetails) {
-      final offers = details.subscriptionOfferDetails;
-      if (offers != null && offers.isNotEmpty) return offers.first.offerToken;
-    }
-    return null;
-  }
+  /// Цена для отображения: у GooglePlayProductDetails.price уже собран
+  /// из первой фазы оффера подписки; для разовой покупки — обычная цена.
+  String displayPrice(ProductDetails product) => product.price;
 
   Future<void> buyProduct(ProductDetails product) async {
-    final param = PurchaseParam(
-      productDetails: product,
-      offerToken: _offerTokenFor(product),
-    );
+    final PurchaseParam param = product is GooglePlayProductDetails
+        ? GooglePlayPurchaseParam(productDetails: product, offerToken: product.offerToken)
+        : PurchaseParam(productDetails: product);
     await _iap.buyNonConsumable(purchaseParam: param);
   }
 
