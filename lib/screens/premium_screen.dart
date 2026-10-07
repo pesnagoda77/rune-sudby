@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:activation_codes/activation_codes.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/billing_service.dart';
+import '../services/rune_code_service.dart';
 import '../l10n/app_localizations.dart';
 
 class PremiumScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class PremiumScreen extends StatefulWidget {
 
 class _PremiumScreenState extends State<PremiumScreen> {
   final BillingService _billing = BillingService();
+  final RuneCodeService _codes = RuneCodeService();
   StreamSubscription<String>? _messagesSub;
   bool _loading = true;
   bool _buying = false;
@@ -37,6 +40,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Future<void> _init() async {
     _messagesSub = _billing.messages.listen(_onMessage);
     await _billing.init();
+    await _codes.init();
     if (mounted) setState(() => _loading = false);
   }
 
@@ -90,6 +94,88 @@ class _PremiumScreenState extends State<PremiumScreen> {
       _onMessage('manageManualHint');
     }
   }
+
+  // ── Task 091: активация кодов ─────────────────────────────────
+
+  Map<CodeError, String> _codeMessages(AppLocalizations l10n) => {
+        CodeError.malformed: l10n.t('codeMalformed'),
+        CodeError.wrongApp: l10n.t('codeWrongApp'),
+        CodeError.unknownType: l10n.t('codeUnknownType'),
+        CodeError.expired: l10n.t('codeExpired'),
+        CodeError.badSignature: l10n.t('codeBadSignature'),
+        CodeError.limitReached: l10n.t('codeLimitReached'),
+        CodeError.disabled: l10n.t('codeDisabled'),
+        CodeError.network: l10n.t('codeNetwork'),
+        CodeError.server: l10n.t('codeServerError'),
+        CodeError.alreadyUsed: l10n.t('codeAlreadyUsed'),
+      };
+
+  Future<CodeResult> _redeemCode(String code) async {
+    final result = await _codes.redeem(code);
+    if (result.ok && !result.alreadyUsed) {
+      await _billing.applyCodeResult(result);
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.t('codeActivated'))),
+        );
+      }
+    }
+    return result;
+  }
+
+  Future<void> _showCodeDialog() async {
+    final l10n = AppLocalizations.of(context);
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          l10n.t('codeDialogTitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _text, fontSize: 18),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ActivationCodeField(
+            onRedeem: _redeemCode,
+            buttonText: l10n.t('codeActivate'),
+            accentColor: _accent,
+            messages: _codeMessages(l10n),
+            inputDecoration: InputDecoration(
+              hintText: l10n.t('codeHint'),
+              isDense: true,
+              filled: true,
+              fillColor: _bg,
+              hintStyle: const TextStyle(color: _textMid, fontSize: 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: _accent.withOpacity(0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: _accent.withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: _accent),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.t('later'),
+                style: const TextStyle(color: _accent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────
 
   String _priceText(ProductDetails? product) {
     if (product == null) return '—';
@@ -181,6 +267,30 @@ class _PremiumScreenState extends State<PremiumScreen> {
                                 size: 16, color: _accent),
                         label: Text(
                           _restoring ? l10n.t('restoring') : l10n.t('restore'),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _accent),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                              color: _accent.withOpacity(0.4), width: 1),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Task 091: вход «Ввести код».
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: OutlinedButton.icon(
+                        onPressed: _showCodeDialog,
+                        icon: const Icon(Icons.key_outlined,
+                            size: 16, color: _accent),
+                        label: Text(
+                          l10n.t('enterCode'),
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,

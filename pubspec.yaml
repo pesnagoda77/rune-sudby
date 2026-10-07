@@ -3,7 +3,7 @@ description: Руна дня v3 — AI-руны с изображениями.
 
 publish_to: 'none'
 
-version: 1.2.0+21
+version: 1.2.1+22
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -19,6 +19,11 @@ dependencies:
   in_app_purchase: ^3.2.0
   in_app_purchase_android: ^0.5.0
   url_launcher: ^6.2.0
+  # Task 091: единый модуль кодов активации.
+  activation_codes:
+    git:
+      url: https://github.com/pesnagoda77/activation-codes.git
+      path: packages/activation_codes
 
 dev_dependencies:
   flutter_test:

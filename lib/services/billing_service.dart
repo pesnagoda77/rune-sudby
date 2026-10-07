@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'package:activation_codes/activation_codes.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Биллинг Руны Судьбы 1.1.9.
+/// Биллинг Руны Судьбы 1.2.1.
 ///
 /// Модель:
 /// - premium_forever — разовая покупка (non-consumable), без изменений;
 /// - premium_monthly — ПОДПИСКА с автопродлением (Google ведёт статус
-///   и продление; приложение не фабрикует локальные сроки).
+///   и продление; приложение не фабрикует локальные сроки);
+/// - коды активации (task 091): FOREVER — Premium навсегда, MONTH — Premium
+///   до даты кода; права по коду объединяются со стором по максимуму.
 ///
 /// Старый one-time продукт premium_30days (1.1.8) отключается в Play Console
 /// при релизе 1.1.9 — entitlement его покупателей снимается синхронизацией
@@ -25,6 +28,8 @@ class BillingService {
   static const String _premium30DaysSubId = 'premium_monthly';
   static const String _premiumTypeKey = 'premium_type'; // 'forever' | '30days'
   static const String _premiumExpiryKey = 'premium_expiry_date'; // legacy 1.1.8
+  static const String _premiumCodeExpiryKey =
+      'premium_code_expiry_date'; // код MONTH (task 091)
 
   List<ProductDetails> _products = [];
   bool _available = false;
@@ -91,8 +96,12 @@ class BillingService {
             await prefs.remove(_premiumExpiryKey);
           } else if (purchase.productID == _premium30DaysSubId) {
             _sawActiveSubscription = true;
-            await prefs.setString(_premiumTypeKey, '30days');
-            await prefs.remove(_premiumExpiryKey); // срок ведёт Google
+            // «Навсегда» (покупка или код FOREVER) не укорачиваем подпиской:
+            // права объединяются по максимуму (task 091).
+            if (prefs.getString(_premiumTypeKey) != 'forever') {
+              await prefs.setString(_premiumTypeKey, '30days');
+              await prefs.remove(_premiumExpiryKey); // срок ведёт Google
+            }
           }
           if (purchase.pendingCompletePurchase) {
             await _iap.completePurchase(purchase);
@@ -118,17 +127,57 @@ class BillingService {
   Future<bool> isPremium() async {
     final prefs = await SharedPreferences.getInstance();
     final type = prefs.getString(_premiumTypeKey);
-    if (type == null) return false;
     if (type == 'forever') return true;
 
-    // '30days' (1.1.9): Google ведёт продление. Legacy-записи 1.1.8 с
-    // истёкшим expiry считаем неактивными, пока Play restore не подтвердит
-    // подписку (тогда expiry-ключ удаляется и статус держится через Google).
-    final expiryStr = prefs.getString(_premiumExpiryKey);
-    if (expiryStr == null) return true;
-    final expiry = DateTime.tryParse(expiryStr);
-    if (expiry == null) return true;
-    return DateTime.now().isBefore(expiry);
+    if (type == '30days') {
+      // Подписка premium_monthly (1.1.9): Google ведёт продление. Legacy
+      // 1.1.8 — со сроком; истёкший legacy не выкидываем сразу — код MONTH
+      // может продлевать доступ (task 091).
+      final expiryStr = prefs.getString(_premiumExpiryKey);
+      if (expiryStr == null) return true;
+      final expiry = DateTime.tryParse(expiryStr);
+      if (expiry == null) return true;
+      if (DateTime.now().isBefore(expiry)) return true;
+    }
+
+    // Код MONTH: доступ до даты кода.
+    final codeExpiryStr = prefs.getString(_premiumCodeExpiryKey);
+    if (codeExpiryStr != null) {
+      final codeExpiry = DateTime.tryParse(codeExpiryStr);
+      if (codeExpiry != null && DateTime.now().isBefore(codeExpiry)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Выдача прав по результату активации кода (task 091).
+  ///
+  /// FOREVER — навсегда, не перетирается ничем (повторной активацией,
+  /// отменой подписки, синком со стором). MONTH — Premium до даты кода;
+  /// действующую подписку не укорачивает, дату кода только продлевает.
+  Future<void> applyCodeResult(CodeResult result) async {
+    if (!result.ok) return;
+    final prefs = await SharedPreferences.getInstance();
+    switch (result.typeKey) {
+      case 'FOREVER':
+        await prefs.setString(_premiumTypeKey, 'forever');
+        await prefs.remove(_premiumExpiryKey);
+        await prefs.remove(_premiumCodeExpiryKey);
+        break;
+      case 'MONTH':
+        final expiresAt = result.expiresAt;
+        if (expiresAt == null) return;
+        if (prefs.getString(_premiumTypeKey) == 'forever') return;
+        // Не укорачиваем: более поздняя дата побеждает.
+        final existingStr = prefs.getString(_premiumCodeExpiryKey);
+        final existing =
+            existingStr == null ? null : DateTime.tryParse(existingStr);
+        if (existing != null && existing.isAfter(expiresAt)) return;
+        await prefs.setString(
+            _premiumCodeExpiryKey, expiresAt.toIso8601String());
+        break;
+    }
   }
 
   /// Ждёт подтверждения покупки (пока Play пришлёт событие в стрим).

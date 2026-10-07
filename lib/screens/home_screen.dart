@@ -204,7 +204,9 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       MaterialPageRoute(builder: (_) => const PremiumScreen()),
     );
-    setState(() {});
+    // Возврат с экрана Premium: перечитываем статус (покупка или код 091).
+    final premium = await _service.isPremium;
+    if (mounted) setState(() => _isPremium = premium);
   }
 
   Color _elementColor(String elementKey) {
