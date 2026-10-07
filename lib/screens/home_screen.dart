@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.t('later'), style: const TextStyle(color: _textMid)),
+            child: Text(l10n.t('later'), style: TextStyle(color: _textMid)),
           ),
           ElevatedButton(
             onPressed: () {

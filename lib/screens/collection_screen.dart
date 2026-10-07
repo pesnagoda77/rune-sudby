@@ -146,7 +146,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       colors: [Colors.black.withOpacity(0.55), Colors.transparent],
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     AppLocalizations.of(context).t('notOpened'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
