@@ -50,7 +50,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
               bottom: false,
               child: Column(
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.fromLTRB(20, 2, 20, 12),
                     child: Text(
                       AppLocalizations.of(context).t('collectionHint'),

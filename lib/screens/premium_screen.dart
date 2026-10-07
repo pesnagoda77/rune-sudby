@@ -17,6 +17,8 @@ class PremiumScreen extends StatefulWidget {
 class _PremiumScreenState extends State<PremiumScreen> {
   final BillingService _billing = BillingService();
   final RuneCodeService _codes = RuneCodeService();
+
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
   StreamSubscription<String>? _messagesSub;
   bool _loading = true;
   bool _buying = false;

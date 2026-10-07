@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../data/runes.dart';
 import '../models/rune.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/rune_texts.dart';
 import '../services/rune_service.dart';
 import 'collection_screen.dart';
 import 'premium_screen.dart';
@@ -22,6 +24,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isPremium = false;
   int _tapCount = 0;
   final PageController _pageController = PageController();
+
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
 
   late AnimationController _animController;
   late Animation<double> _fadeIn;
