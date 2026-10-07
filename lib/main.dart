@@ -42,7 +42,7 @@ class RuneApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFFD700),
             foregroundColor: const Color(0xFF0D0D1A),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
