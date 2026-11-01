@@ -59,6 +59,14 @@ class RuneService {
     return await _billing.isPremium();
   }
 
+  /// Синк прав со стором с ожиданием (v1.2.2) — с учётом debug-премиума.
+  Future<bool> ensurePremiumSynced({
+    Duration maxWait = const Duration(seconds: 5),
+  }) async {
+    if (await _debugPremium) return true;
+    return _billing.ensurePremiumSynced(maxWait: maxWait);
+  }
+
   Future<bool> get _debugPremium async {
     if (_prefs == null) return false;
     return _prefs!.getBool('debug_premium') ?? false;

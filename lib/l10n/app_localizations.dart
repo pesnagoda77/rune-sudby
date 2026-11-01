@@ -321,6 +321,13 @@ class AppLocalizations {
       'es': 'Compras restauradas',
       'fr': 'Achats restaurés',
     },
+    'msgAlreadyOwned': {
+      'ru': 'Эта покупка уже есть на аккаунте — права активированы',
+      'en': 'You already own this — entitlement activated',
+      'de': 'Diesen Kauf besitzt du bereits – Berechtigung aktiviert',
+      'es': 'Ya tienes esta compra: acceso activado',
+      'fr': 'Vous possédez déjà cet achat – accès activé',
+    },
     'msgNothingToRestore': {
       'ru': 'Активных покупок не найдено',
       'en': 'No active purchases found',

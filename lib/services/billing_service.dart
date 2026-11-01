@@ -112,8 +112,15 @@ class BillingService {
           break;
         case PurchaseStatus.error:
           final code = purchase.error?.code ?? '';
-          if (code.toLowerCase().contains('cancel')) {
+          final lc = code.toLowerCase();
+          if (lc.contains('cancel')) {
             _messages.add('msgPurchaseCanceled');
+          } else if (lc.contains('alreadyowned')) {
+            // Покупка уже есть на аккаунте (например, после переустановки):
+            // не ошибка — подтягиваем права со стора заново.
+            _messages.add('msgAlreadyOwned');
+            // ignore: discarded_futures
+            _iap.restorePurchases();
           } else {
             _messages.add('msgPurchaseError');
           }
@@ -201,6 +208,26 @@ class BillingService {
         ? GooglePlayPurchaseParam(productDetails: product, offerToken: product.offerToken)
         : PurchaseParam(productDetails: product);
     await _iap.buyNonConsumable(purchaseParam: param);
+  }
+
+  /// Гарантированный синк прав со стором: если премиум ещё не подтверждён —
+  /// запрашивает restore и коротко ждёт ответа (v1.2.2: фикс «вытягивание
+  /// 3 рун платное сразу после установки» — restore при старте асинхронный,
+  /// и пейволл мог показаться раньше, чем приходили покупки).
+  Future<bool> ensurePremiumSynced({
+    Duration maxWait = const Duration(seconds: 5),
+  }) async {
+    if (await isPremium()) return true;
+    if (!_available) return false;
+    _sawActiveSubscription = false;
+    // ignore: discarded_futures
+    _iap.restorePurchases();
+    final deadline = DateTime.now().add(maxWait);
+    while (DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (await isPremium()) return true;
+    }
+    return false;
   }
 
   /// Ручное восстановление покупок (кнопка на экране премиума).

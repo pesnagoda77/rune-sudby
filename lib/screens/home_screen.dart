@@ -70,7 +70,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadLastDraw() async {
     await _service.init();
-    final premium = await _service.isPremium;
+    // v1.2.2: даём restore при старте завершиться (≤5 с), прежде чем
+    // решать, показывать ли премиум-возможности.
+    final premium = await _service.ensurePremiumSynced(
+        maxWait: const Duration(seconds: 5));
     if (mounted) {
       setState(() => _isPremium = premium);
     }
@@ -204,6 +207,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openPremium() async {
+    // v1.2.2: перед пейволлом — финальный синк со стором. Покупка могла
+    // уже быть на аккаунте («you already own this»), но не доехать.
+    final synced = await _service.ensurePremiumSynced();
+    if (!mounted) return;
+    if (synced) {
+      setState(() => _isPremium = true);
+      return; // пейволл не нужен — премиум уже активен
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const PremiumScreen()),
