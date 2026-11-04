@@ -1,4 +1,4 @@
-﻿name: iOS build check
+name: iOS build check
 
 # Проверка iOS-сборки на macOS. Запускается ВРУЧНУЮ (кнопка Run workflow),
 # чтобы не присылать письма о падениях при каждом изменении кода.
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
