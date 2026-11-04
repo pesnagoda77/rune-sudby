@@ -13,8 +13,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.4'
           channel: stable
           cache: true
+      - name: Доступ к приватному модулю кодов
+        run: git config --global url."https://x-access-token:${{ secrets.GH_MODULE_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - name: Версия Flutter
         run: flutter --version
       - name: Зависимости
@@ -22,4 +25,6 @@ jobs:
       - name: Установка модулей iOS
         run: cd ios && pod install --repo-update
       - name: Сборка iOS без подписи
-        run: flutter build ios --release --no-codesign
+        run: >-
+          flutter build ios --release --no-codesign
+          --dart-define=CODE_KEY=${{ secrets.CODE_KEY }}
